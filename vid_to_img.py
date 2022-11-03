@@ -1,4 +1,4 @@
-#Oct 27 2022
+#Nov 3 2022
 
 #This program will convert a video to a collection of jpgs
 #More specifically, it will save every [Xth] frame as a jpg
