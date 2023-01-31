@@ -2,10 +2,11 @@ import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
-import track_test_notebook
-
+#import track_test_notebook
+import webbrowser
 import os
 import sys
+
 import itertools
 import math
 import logging
@@ -129,6 +130,7 @@ def center(pnt):
     return[np.mean(np.array(pnt), axis=0)]
 
 def process(inputVid):
+    import model
     setup()
     import cv2 as cv
     from keras.preprocessing.image import load_img
@@ -238,28 +240,66 @@ def process(inputVid):
     print("total", len(totalitems))
 
 #-----------------------------GUI-----------------------
-def processVid(inputvid):
-    process(inputvid)
     
 
 class CostiaUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.vidFile = "" #video to be processed
         self.geometry('500x500')
+        self.detections = []
+        self.vidFile = "" #video to be processed
+        lButton = tk.Button(self,text="Manual image labeling",command=self.label_mode)
+        dButton = tk.Button(self,text="Automated trash detection",command=self.detect_mode)
+        lButton.pack()
+        dButton.pack()
+        #display video w detections for playback
+        #display list of detections 
+        #download processed video (mp4)
+        #download list of detections (csv)
+
+    def enableMode(self):
+        self.selectButton['state'] = 'normal'
+        print(self.mode.get() + 1)  
+
+    def l_or_d(self):
+        if self.mode.get() == 0:
+            self.label_mode()
+        else:
+            self.detect_mode()
+
+    def label_mode(self):
+        os.system('cmd /c "docker pull heartexlabs/label-studio:latest"')
+        os.system('cmd /c "docker run -d -p 8081:8080 heartexlabs/label-studio:latest"')
+        #implement some way to wait for the container to load properly so you won't get an error page
+        #is there a way to "ask" docker if the container is ready?
+        webbrowser.open("http://localhost:8081/")
+        print("label")
+        
+
+    def detect_mode(self):
         self.fileButton = tk.Button(self,text="Browse Files",command=self.getFile)
         self.fileButton.pack()
         self.fileLabel = tk.Label (self,text="File name:")
         self.fileLabel.pack()
-        self.procButton = tk.Button(self,text="Process Video",command=processVid(self.vidFile),state='disabled')
+        self.procButton = tk.Button(self,text="Process Video",state='disabled')
         self.procButton.pack()
+        print("detect")
 
     #file explorer, gets the video to be processed
     def getFile(self):
         self.vidFile = filedialog.askopenfilename(initialdir = "/",title = "Select a File")
         self.fileLabel.configure(text="File name" + self.vidFile)
         self.procButton['state'] = 'normal'
+        self.procButton['command'] = self.processVid
+
+    def processVid(self):
+        print("processing")
+        process(self.vidFile)  
 
 
+#get image
+os.system('cmd /c "docker pull garnes96/tf-gpu-v1.1.0:latest"')
+#launch image
+os.system('cmd /c "docker run -d -p 8080:8080 garnes96/tf-gpu-v1.0.13:latest"')
 exGUI = CostiaUI()
 exGUI.mainloop()
