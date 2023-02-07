@@ -1,3 +1,6 @@
+#Ellen O'Brien
+#2/2/2023
+#--------------------------
 import tkinter as tk
 from tkinter import *
 from tkinter import ttk
@@ -34,54 +37,6 @@ import norfair
 from norfair import Detection, Paths, Tracker, Video
 from typing import List
 
-
-def setup():
-    # Root directory of the project
-    ROOT_DIR = os.path.abspath(".")
-    print(ROOT_DIR)
-    MODEL_DIR=os.path.join(ROOT_DIR, "models\logs")
-    print(MODEL_DIR)
-    COCO_MODEL_PATH=os.path.join(ROOT_DIR, "models\mask_rcnn_taco0100.h5")
-    print(COCO_MODEL_PATH)
-
-    import csv
-    import dataset
-    # Load class map - these tables map the original TACO classes to your desired class system
-    # and allow you to discard classes that you don't want to include.
-    class_map = {}
-    with open("./taco_config/map_10.csv") as csvfile:
-        reader = csv.reader(csvfile)
-        class_map = {row[0]:row[1] for row in reader}
-
-    # Load full dataset or a subset
-    TACO_DIR = "../data"
-    round = None # Split number: If None, loads full dataset else if int > 0 selects split no 
-    subset = "test" # Used only when round !=None, Options: ('train','val','test') to select respective subset
-    dataset = dataset.Taco()
-    taco = dataset.load_taco(TACO_DIR, round, subset, class_map=class_map, return_taco=True)
-
-    # Must call before using the dataset
-    dataset.prepare()
-
-    print("Class Count: {}".format(dataset.num_classes))
-    for i, info in enumerate(dataset.class_info):
-        print("{:3}. {:50}".format(i, info['name']))
-
-    #Mask RCNN Configuration
-    class TacoTestConfig(Config):
-        NAME = "taco"
-        GPU_COUNT = 1
-        IMAGES_PER_GPU = 1
-        DETECTION_MIN_CONFIDENCE = 3
-        NUM_CLASSES = dataset.num_classes
-    config = TacoTestConfig()
-
-    model=modellib.MaskRCNN(mode="inference", model_dir=TACO_DIR, config=config)
-    print(MODEL_DIR)
-
-    model_path="./models/logs/mask_rcnn_taco_0100.h5"
-
-    model.load_weights(weights_in_path=model_path, weights_out_path=model_path, by_name=True)
 
 def norftrack(res,class_list):
 #res: the list of dicts returned by the model.detect function
@@ -130,12 +85,58 @@ def center(pnt):
     return[np.mean(np.array(pnt), axis=0)]
 
 def process(inputVid):
-    import model
-    setup()
+    # Root directory of the project
+    ROOT_DIR = os.path.abspath(".")
+    print(ROOT_DIR)
+    MODEL_DIR=os.path.join(ROOT_DIR, "models\logs")
+    print(MODEL_DIR)
+    COCO_MODEL_PATH=os.path.join(ROOT_DIR, "models\mask_rcnn_taco0100.h5")
+    print(COCO_MODEL_PATH)
+
+    import csv
+    import dataset
+    # Load class map - these tables map the original TACO classes to your desired class system
+    # and allow you to discard classes that you don't want to include.
+    class_map = {}
+    with open("./taco_config/map_10.csv") as csvfile:
+        reader = csv.reader(csvfile)
+        class_map = {row[0]:row[1] for row in reader}
+
+    # Load full dataset or a subset
+    TACO_DIR = "../data"
+    round = None # Split number: If None, loads full dataset else if int > 0 selects split no 
+    subset = "test" # Used only when round !=None, Options: ('train','val','test') to select respective subset
+    dataset = dataset.Taco()
+    taco = dataset.load_taco(TACO_DIR, round, subset, class_map=class_map, return_taco=True)
+
+    # Must call before using the dataset
+    dataset.prepare()
+
+    print("Class Count: {}".format(dataset.num_classes))
+    for i, info in enumerate(dataset.class_info):
+        print("{:3}. {:50}".format(i, info['name']))
+
+    #Mask RCNN Configuration
+    class TacoTestConfig(Config):
+        NAME = "taco"
+        GPU_COUNT = 1
+        IMAGES_PER_GPU = 1
+        DETECTION_MIN_CONFIDENCE = 3
+        NUM_CLASSES = dataset.num_classes
+    config = TacoTestConfig()
+
+    model=modellib.MaskRCNN(mode="inference", model_dir=TACO_DIR, config=config)
+    print(MODEL_DIR)
+
+    model_path="./models/logs/mask_rcnn_taco_0100.h5"
+
+    model.load_weights(weights_in_path=model_path, weights_out_path=model_path, by_name=True)
+    
     import cv2 as cv
     from keras.preprocessing.image import load_img
     from keras.preprocessing.image import img_to_array
     from keras.preprocessing.image import array_to_img
+
     # make a list to store all the frames
     vid_array = []
     # getting the video
