@@ -1,0 +1,11 @@
+bottles 0
+bottle caps 0
+cans 0
+cigarettes 0
+cups 0
+lids 0
+other 0
+wrapper + bag 0
+pop tabs 0
+straws 0
+total 0

@@ -227,18 +227,103 @@ def process(inputVid):
             visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
             plt.close()  # close the figure after displaying it to free up memory
             frame_counter+=1
-    out.release()        
-    print("bottles", len(bottles))
-    print("bottle caps", len(botcap))
-    print("cans", len(cans))
-    print("cigarettes", len(cigarettes))
-    print("cups", len(cups))
-    print("lids", len(lids))
-    print("other", len(others))
-    print("wrapper + bag", len(wrapperbag))
-    print("pop tabs", len(poptabs))
-    print("straws", len(straws))
-    print("total", len(totalitems))
+    out.release()
+    outfile=open("results.txt", "w")
+    outfile.write("bottles ")
+    outfile.write(str(len(bottles)))
+    outfile.write("\nbottle caps ")
+    outfile.write(str(len(botcap)))
+    outfile.write("\ncans ")
+    outfile.write(str(len(cans)))
+    outfile.write("\ncigarettes ")
+    outfile.write(str(len(cigarettes)))
+    outfile.write("\ncups ")
+    outfile.write(str(len(cups)))
+    outfile.write("\nlids ")
+    outfile.write(str(len(lids)))
+    outfile.write("\nother ")
+    outfile.write(str( len(others)))
+    outfile.write("\nwrapper + bag ")
+    outfile.write(str(len(wrapperbag)))
+    outfile.write("\npop tabs ")
+    outfile.write(str(len(poptabs)))
+    outfile.write("\nstraws ")
+    outfile.write(str(len(straws)))
+    outfile.write("\ntotal ")
+    outfile.write(str(len(totalitems)))
+
+def train():
+    ROOT_DIR = os.path.abspath(".")
+    print(ROOT_DIR)
+    MODEL_DIR=os.path.join(ROOT_DIR, "models\logs")
+    print(MODEL_DIR)
+    COCO_MODEL_PATH=os.path.join(ROOT_DIR, "models\mask_rcnn_taco0100.h5")
+    print(COCO_MODEL_PATH)
+
+    import csv
+    import dataset
+    # Load class map - these tables map the original TACO classes to your desired class system
+    # and allow you to discard classes that you don't want to include.
+    class_map = {}
+    with open("./taco_config/map_10.csv") as csvfile:
+        reader = csv.reader(csvfile)
+        class_map = {row[0]:row[1] for row in reader}
+
+    TACO_DIR = "../data"
+    round = None # Split number: If None, loads full dataset else if int > 0 selects split no 
+    subset = "train" # Used only when round !=None, Options: ('train','val','test') to select respective subset
+    dataset = dataset.Taco()
+    taco = dataset.load_taco(TACO_DIR, round, subset, class_map=class_map, return_taco=True)
+    dataset.prepare()
+    nr_classes = dataset.num_classes
+    
+    dataset_val=dataset.load_taco(dataset, round, "val", class_map=class_map, auto_download=None)
+    dataset_val.prepare()
+
+    class TacoTrainConfig(Config):
+        NAME = "taco"
+        #originally Images_per_gpu equalled 2
+        IMAGES_PER_GPU = 1
+        GPU_COUNT = 1
+        STEPS_PER_EPOCH = min(1000,int(dataset.num_images/(IMAGES_PER_GPU*GPU_COUNT)))
+        #STEPS_PER_EPOCH=100000
+        USE_MINI_MASK = True
+        MINI_MASK_SHAPE = (512, 512)
+        NUM_CLASSES = nr_classes
+    config = TacoTrainConfig()
+
+    model=modellib.MaskRCNN(mode="training", model_dir=TACO_DIR, config=config)
+    print(MODEL_DIR)
+
+    model_path="./models/logs/mask_rcnn_taco_0100.h5"
+
+    model.load_weights(model_path, model_path, by_name=True)
+
+    training_meta = {
+        'number of classes': nr_classes,
+        'round': round,
+        #'use_augmentation': args.aug,
+        #'use_transplants': args.use_transplants != None,
+        'learning_rate': config.LEARNING_RATE,
+        'layers_trained': 'all'}
+
+    subdir = os.path.dirname(model.log_dir)
+    if not os.path.isdir(subdir):
+        os.mkdir(subdir)
+
+    if not os.path.isdir(model.log_dir):
+        os.mkdir(model.log_dir)
+
+    train_meta_file = model.log_dir + '_meta.json'
+    with open(train_meta_file, 'w+') as f:
+        f.write(json.dumps(training_meta))
+
+    # Training all layers
+    model.train(taco, dataset_val,learning_rate=config.LEARNING_RATE, epochs=100,
+                layers='all', augmentation=None)
+
+
+
 
 #-----------------------------GUI-----------------------
     
@@ -251,8 +336,11 @@ class CostiaUI(tk.Tk):
         self.vidFile = "" #video to be processed
         lButton = tk.Button(self,text="Manual image labeling",command=self.label_mode)
         dButton = tk.Button(self,text="Automated trash detection",command=self.detect_mode)
+        tButton = tk.Button(self,text="Train the model",command=self.train_mode)
+
         lButton.pack()
         dButton.pack()
+        tButton.pack()
         #display video w detections for playback
         #display list of detections 
         #download processed video (mp4)
@@ -285,6 +373,9 @@ class CostiaUI(tk.Tk):
         self.procButton = tk.Button(self,text="Process Video",state='disabled')
         self.procButton.pack()
         print("detect")
+
+    def train_mode(self):
+        train()
 
     #file explorer, gets the video to be processed
     def getFile(self):
