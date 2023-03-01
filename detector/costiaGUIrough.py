@@ -49,11 +49,27 @@ def norftrack(res,class_list):
         
         #the class of the particular detection
         det_class = res['class_ids'][x] #int class ID
+        print(det_class)
         class_list.append(det_class)
         
         centroid=np.array([xc, yc])
         scores=np.array([res['scores'][x]])
+        #label=np.array(class_list[res['class_ids'][x]])
         norftection.append(Detection(points=centroid, scores=scores))
+        #norftection.append(Detection(points=centroid, scores=scores, label=label))
+        
+    return norftection
+
+def norftrack2(res, labels):
+    norftection: List[Detection]=[]
+    for x in range(len(res['rois'])):
+        yc=(res['rois'][x][0]+res['rois'][x][2])/2
+        xc=(res['rois'][x][1]+res['rois'][x][3])/2
+        
+        centroid=np.array([xc, yc])
+        scores=np.array([res['scores'][x]])
+        label=np.array(labels[res['class_ids'][x]])
+        norftection.append(Detection(points=centroid, scores=scores, label=label))
         
     return norftection
 
@@ -144,6 +160,8 @@ def process(inputVid):
 
     #norfair tracker
     tracker=norfair.Tracker(distance_function=euc_distance, distance_threshold=30)
+    spectracker=norfair.Tracker(distance_function=euc_distance, distance_threshold=30)
+    
     path=Paths(center, attenuation=0.01)
 
     # checks whether frames were extracted
@@ -174,7 +192,7 @@ def process(inputVid):
     straws=set()
     #list of sets can be indexed by class_id
     setlist = [totalitems,bottles,botcap,cans,cigarettes,cups,lids,others,wrapperbag,poptabs,straws]
-
+    
     # go through and detect all frames in the list  
     frame_counter=1
     #line=400
@@ -193,21 +211,58 @@ def process(inputVid):
             
             #convert to norfair detection and add to tracked items
             det=norftrack(r,obj_class)
+            specdet=norftrack2(r, dataset.class_names)
+            
+            print(det)
+            print(specdet[0].label)
             tracked=tracker.update(detections=det) #list of tracked items
+            spectracked=spectracker.update(detections=specdet)
+            print(tracked)
+            print(spectracked)
             
+
             norfair.draw_points(orimage, det)
-            norfair.draw_tracked_objects(orimage, tracked, color=(0, 225, 0), id_size=3, id_thickness=2)
-            
+            norfair.draw_tracked_objects(orimage, tracked, color=(0, 225, 0), id_size=3, id_thickness=2, draw_labels=True)
+            objdet=False
             if (frame_counter>7):
                 x = 0
                 while x < len(tracked):
+                    print(tracked[0].age)
                     item = tracked[x] #specific tracked item
+                    print(item)
                     item_class = obj_class[x] #item's corresponding class id
+                    print(obj_class)
                     #if ((line+15)>item.estimate[0][1]>(line-15)): #if an object is within range of the line
                     setlist[0].add(item.id) #add the item to the list of counted items
-                    print("item", item.id, "detected",dataset.class_names[item_class])
-                    setlist[item_class].add(item.id) #add the item id to its class's corresponding set
+                    #print("item", item.id, "detected",dataset.class_names[item_class])
+                    print("item", item.id, "detected")
+                    #setlist[item_class].add(item.id) #add the item id to its class's corresponding set
                     x += 1
+                    objdet=True
+                
+                for item in spectracked:
+                    if item.label=="Bottle":
+                        bottles.add(item.id)
+                    elif item.label=="Bottle cap":
+                        botcap.add(item.id)
+                    elif item.label=="Can":
+                        cans.add(item.id)
+                    elif item.label=="Cigarette":
+                        cigarettes.add(item.id)
+                    elif item.label=="Cup":
+                        cups.add(item.id)
+                    elif item.label=="Lid":
+                        lids.add(item.id)
+                    elif item.label=="Other":
+                        others.add(item.id)
+                    elif item.label=="Plastic bag + wrapper":
+                        wrapperbag.add(item.id)
+                    elif item.label=="Pop tab":
+                        poptabs.add(item.id)
+                    elif item.label=="Straw":
+                        straws.add(item.id)
+                    print("item", item.id, "detected",item.label)
+                    
                 print("bottles", bottles)
                 print("bottle caps", botcap)
                 print("cans", cans)
@@ -219,17 +274,24 @@ def process(inputVid):
                 print("pop tabs", poptabs)
                 print("straws", straws)
                 print("total", totalitems)
+                
+
 
             frame=path.draw(vid_img, tracked)
             #orimage=cv.line(orimage, (0,line), (2000, line), (255, 0, 0), 6)
             frame=cv.cvtColor(frame, cv.COLOR_RGB2BGR)
             out.write(frame)
-            visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
+            #print(r['scores'])
+            #visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
+            if objdet==True:
+                visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
+
             plt.close()  # close the figure after displaying it to free up memory
             frame_counter+=1
     out.release()
     outfile=open("results.txt", "w")
-    outfile.write("bottles ")
+    outfile.write("Plastics Count Costia \n")
+    outfile.write("\nbottles ")
     outfile.write(str(len(bottles)))
     outfile.write("\nbottle caps ")
     outfile.write(str(len(botcap)))
