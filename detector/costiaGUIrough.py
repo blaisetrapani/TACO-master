@@ -197,7 +197,8 @@ def process(inputVid):
     frame_counter=1
     #line=400
     obj_class = []
-
+    specscores=[]
+    
     # set up for video export
     frameSize = (1280,720)
     out = cv.VideoWriter('../data/vid2/test_vid.mp4',cv.VideoWriter_fourcc(*"mp4v"), 10, frameSize)
@@ -236,11 +237,13 @@ def process(inputVid):
                     setlist[0].add(item.id) #add the item to the list of counted items
                     #print("item", item.id, "detected",dataset.class_names[item_class])
                     print("item", item.id, "detected")
-                    #setlist[item_class].add(item.id) #add the item id to its class's corresponding set
+                    #setlist[item_class].add(item.id) #add the item id to its class's corresponding set 
                     x += 1
-                    objdet=True
-                
+                x=0
                 for item in spectracked:
+                    
+                    if (len(specscores)<len(spectracked)):
+                        specscores.append([])
                     if item.label=="Bottle":
                         bottles.add(item.id)
                     elif item.label=="Bottle cap":
@@ -261,7 +264,13 @@ def process(inputVid):
                         poptabs.add(item.id)
                     elif item.label=="Straw":
                         straws.add(item.id)
-                    print("item", item.id, "detected",item.label)
+                    print("item", item.id, "detected",item.last_detection.scores)
+                    specscores[(item.id)-1].append(item.last_detection.scores[0])
+                    print(specscores)
+
+                    x+=1
+                    objdet=True
+
                     
                 print("bottles", bottles)
                 print("bottle caps", botcap)
@@ -282,9 +291,10 @@ def process(inputVid):
             frame=cv.cvtColor(frame, cv.COLOR_RGB2BGR)
             out.write(frame)
             #print(r['scores'])
-            #visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
-            if objdet==True:
-                visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
+            visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
+            #debugging tool
+            #if objdet==True:
+            #    visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
 
             plt.close()  # close the figure after displaying it to free up memory
             frame_counter+=1
@@ -313,6 +323,11 @@ def process(inputVid):
     outfile.write(str(len(straws)))
     outfile.write("\ntotal ")
     outfile.write(str(len(totalitems)))
+
+    for x in range(len(specscores)):
+        outfile.write("Score of item ")
+        outfile.write(x)
+        outfile.write(specscores[x])
 
 def train():
     ROOT_DIR = os.path.abspath(".")
