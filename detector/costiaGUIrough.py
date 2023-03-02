@@ -215,7 +215,7 @@ def process(inputVid):
             specdet=norftrack2(r, dataset.class_names)
             
             print(det)
-            print(specdet[0].label)
+            
             tracked=tracker.update(detections=det) #list of tracked items
             spectracked=spectracker.update(detections=specdet)
             print(tracked)
@@ -239,10 +239,16 @@ def process(inputVid):
                     print("item", item.id, "detected")
                     #setlist[item_class].add(item.id) #add the item id to its class's corresponding set 
                     x += 1
+                    print(item.last_detection.points[0][0])
+
+                    if (item.id==2):
+                        objdet=True
+
                 x=0
                 for item in spectracked:
-                    
-                    if (len(specscores)<len(spectracked)):
+                    #for x in tracked:
+                                            
+                    if (len(specscores)<item.id):
                         specscores.append([])
                     if item.label=="Bottle":
                         bottles.add(item.id)
@@ -264,12 +270,12 @@ def process(inputVid):
                         poptabs.add(item.id)
                     elif item.label=="Straw":
                         straws.add(item.id)
-                    print("item", item.id, "detected",item.last_detection.scores)
+                    print("item", item.id, "detected",item.label)
+                    print("item", item.id, "detected",item.last_detection.points)
                     specscores[(item.id)-1].append(item.last_detection.scores[0])
-                    print(specscores)
+                    
 
                     x+=1
-                    objdet=True
 
                     
                 print("bottles", bottles)
@@ -291,10 +297,10 @@ def process(inputVid):
             frame=cv.cvtColor(frame, cv.COLOR_RGB2BGR)
             out.write(frame)
             #print(r['scores'])
-            visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
+            #visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
             #debugging tool
-            #if objdet==True:
-            #    visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
+            if objdet==True:
+                visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
 
             plt.close()  # close the figure after displaying it to free up memory
             frame_counter+=1
@@ -325,9 +331,12 @@ def process(inputVid):
     outfile.write(str(len(totalitems)))
 
     for x in range(len(specscores)):
-        outfile.write("Score of item ")
-        outfile.write(x)
-        outfile.write(specscores[x])
+        outfile.write("\nScore of item ")
+        outfile.write(str(x))
+        outfile.write(str(specscores[x]))
+        average=sum(specscores[x])/len(specscores[x])
+        outfile.write("\nAverage:")
+        outfile.write(str(average))
 
 def train():
     ROOT_DIR = os.path.abspath(".")
