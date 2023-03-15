@@ -200,8 +200,10 @@ def process(inputVid):
     specscores=[]
     
     # set up for video export
-    frameSize = (1280,720)
-    out = cv.VideoWriter('../data/vid2/test_vid.mp4',cv.VideoWriter_fourcc(*"mp4v"), 10, frameSize)
+    frameSize = (1600,1600)
+    #frameSize = (1280,720)
+    #make a saves folder in the detector folder
+    out = cv.VideoWriter('./saves/test.mp4',cv.VideoWriter_fourcc(*"mp4v"), 10, frameSize)
 
     for vid_img in vid_array:
         if frame_counter<(len(vid_array)-1): #ignore the last image, which is blank
@@ -302,8 +304,15 @@ def process(inputVid):
             if objdet==True:
                 visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
 
-            plt.close()  # close the figure after displaying it to free up memory
+            save_dir = ("./saves/"+str(frame_counter).rjust(5,'0')+".png")
+            #change visualize.py so that display_instances takes a save directory in the function call and saves the figure as a png at that directory
+            visualize.display_instances(orimage, save_dir,r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
             frame_counter+=1
+
+    for file in os.listdir("./saves"):
+        frame = cv.imread("./saves/" + file)
+        out.write(frame)
+        
     out.release()
     outfile=open("results.txt", "w")
     outfile.write("Plastics Count Costia \n")
