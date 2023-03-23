@@ -177,7 +177,9 @@ def process(inputVid):
             img=cv.cvtColor(img, cv.COLOR_BGR2RGB)
             vid_array[count]=img
         count+=1
-        
+    #setting video dimensions
+    height,width = vid_array[0].shape[:2]
+    
     #each class is represented by a set that will contain detection ids without duplication
     totalitems=set()
     bottles=set()
@@ -200,9 +202,13 @@ def process(inputVid):
     specscores=[]
     
     # set up for video export
-    frameSize = (1600,1600)
+    frameSize = (height,width)
     #frameSize = (1280,720)
     #make a saves folder in the detector folder
+    savepath = './saves'
+    if os.path.exists(savepath):
+        shutil.rmtree(savepath)
+    os.makedirs(savepath)
     out = cv.VideoWriter('./saves/test.mp4',cv.VideoWriter_fourcc(*"mp4v"), 10, frameSize)
 
     for vid_img in vid_array:
