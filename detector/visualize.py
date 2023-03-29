@@ -83,7 +83,7 @@ def apply_mask(image, mask, color, alpha=0.5):
 
 def display_instances(image, savedir, boxes, masks, class_ids, class_names,
                       scores=None, title="",
-                      figsize=(16, 16), ax=None,
+                      figsize=(16, 9), ax=None,
                       show_mask=True, show_bbox=True,
                       colors=None, captions=None):
     """
@@ -99,6 +99,7 @@ def display_instances(image, savedir, boxes, masks, class_ids, class_names,
     captions: (optional) A list of strings to use as captions for each object
     """
     # Number of instances
+    print(boxes)
     N = boxes.shape[0]
     if not N:
         print("\n*** No instances to display *** \n")
@@ -116,15 +117,16 @@ def display_instances(image, savedir, boxes, masks, class_ids, class_names,
 
     # Show area outside image boundaries.
     height, width = image.shape[:2]
-    ax.set_ylim(height + 10, -10)
-    ax.set_xlim(-10, width + 10)
+    ax.set_ylim(height, 0)
+    ax.set_xlim(0, width)
     ax.axis('off')
     ax.set_title(title)
-
+    
+    
     masked_image = image.astype(np.uint32).copy()
     for i in range(N):
-        color = colors[i]
-
+        #color = colors[i]
+        color=(1.0,0.0,0.0)
         # Bounding box
         if not np.any(boxes[i]):
             # Skip this instance. Has no bbox. Likely lost in image cropping.
@@ -146,7 +148,7 @@ def display_instances(image, savedir, boxes, masks, class_ids, class_names,
         else:
             caption = captions[i]
         ax.text(x1, y1 + 8, caption,
-                color='w', size=11, backgroundcolor="none")
+                color='w', size=11, backgroundcolor="none", wrap=True)
 
         # Mask
         mask = masks[:, :, i]
@@ -167,7 +169,7 @@ def display_instances(image, savedir, boxes, masks, class_ids, class_names,
     ax.imshow(masked_image.astype(np.uint8))
     #if auto_show:
     #    plt.show()
-    plt.savefig(savedir,format="png", pad_inches=0)
+    plt.savefig(savedir,format="png", pad_inches=0, bbox_inches='tight', bbox_extra_artists=[])
     plt.close()
     print(savedir)
 
