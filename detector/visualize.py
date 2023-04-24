@@ -99,7 +99,7 @@ def display_instances(image, savedir, boxes, masks, class_ids, class_names,
     captions: (optional) A list of strings to use as captions for each object
     """
     # Number of instances
-    print(boxes)
+    #print(boxes)
     N = boxes.shape[0]
     if not N:
         print("\n*** No instances to display *** \n")
@@ -113,7 +113,7 @@ def display_instances(image, savedir, boxes, masks, class_ids, class_names,
         auto_show = True
 
     # Generate random colors
-    colors = colors or random_colors(N)
+    #colors = colors or random_colors(N)
 
     # Show area outside image boundaries.
     height, width = image.shape[:2]
@@ -131,7 +131,9 @@ def display_instances(image, savedir, boxes, masks, class_ids, class_names,
         if not np.any(boxes[i]):
             # Skip this instance. Has no bbox. Likely lost in image cropping.
             continue
+        
         y1, x1, y2, x2 = boxes[i]
+        
         if show_bbox:
             p = patches.Rectangle((x1, y1), x2 - x1, y2 - y1, linewidth=2,
                                 alpha=0.7, linestyle="dashed",
@@ -145,6 +147,7 @@ def display_instances(image, savedir, boxes, masks, class_ids, class_names,
             label = class_names[class_id]
             x = random.randint(x1, (x1 + x2) // 2)
             caption = "{} {:.3f}".format(label, score) if score else label
+            #caption = "{} {:.3f}".format(str(y1,x1),str(y2,x2)) if score else label
         else:
             caption = captions[i]
         ax.text(x1, y1 + 8, caption,
@@ -171,10 +174,10 @@ def display_instances(image, savedir, boxes, masks, class_ids, class_names,
     #    plt.show()
     plt.savefig(savedir,format="png", pad_inches=0, bbox_inches='tight', bbox_extra_artists=[])
     plt.close()
-    print(savedir)
+    #print(savedir)
 
     
-def display_differences(image,
+def display_differences(image, save_dir,
                         gt_box, gt_class_id, gt_mask,
                         pred_box, pred_class_id, pred_score, pred_mask,
                         class_names, title="", ax=None,
@@ -202,14 +205,16 @@ def display_differences(image,
             for i in range(len(pred_match))]
     # Set title if not provided
     title = title or "Ground Truth and Detections\n GT=green, pred=red, captions: score/IoU"
+    height,width = image.shape[:2]
+
     # Display
     display_instances(
-        image,
+        image, save_dir,
         boxes, masks, class_ids,
         class_names, scores, ax=ax,
         show_bbox=show_box, show_mask=show_mask,
         colors=colors, captions=captions,
-        title=title)
+        title=title, figsize=(width/77, height/77))
 
 
 def draw_rois(image, rois, refined_rois, mask, class_ids, class_names, limit=10):
