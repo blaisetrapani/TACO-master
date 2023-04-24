@@ -1,6 +1,7 @@
 # Ellen O'Brien
 # 4.12.2023
 import os
+import time
 import sys
 import itertools
 import math
@@ -124,7 +125,7 @@ Builder.load_string("""
     BoxLayout:
         orientation: 'vertical'
         Image:
-            source: 'mylogo.png'
+            source: './mylogo.png'
             size: self.texture_size
         Label:
             text: 'Costia'
@@ -180,15 +181,17 @@ Builder.load_string("""
             Label:
                 id: prog_label
                 text: ''
-        Label:
-            id: count_label
-            text: 'Trash Count'
+        BoxLayout:
+            orientation: 'vertical'
+            Label:
+                id: count_label
+                text: 'Trash Count'
 
 <ResultScreen>:
     on_enter: root.get_scores()
     BoxLayout:
         VideoPlayer:
-            source: './saves/test.mp4'
+            id: vid
         Label:
             id: scores
 """)
@@ -256,16 +259,26 @@ class ProgressScreen(Screen):
 
     def loadVid(self, inputVid):
         # getting the video
+        vid = cv.VideoCapture(inputVid)
         vid2 = cv.VideoCapture(inputVid)
         # checks whether frames were extracted
         success = 1
         count = 0
-        while success:
+        frame_num = int(vid.get(cv.CAP_PROP_FRAME_COUNT) / 3)
+        """while success:
             # read the frame and add it to the frame list
             success, image = vid2.read()
             self.vid_array.append(image)
             count += 1
-            print(count)
+            print(count)"""
+        while success and count < vid.get(cv.CAP_PROP_FRAME_COUNT):
+            # read the frame and add it to the frame list
+            vid.set(1, count)
+            success, frame = vid.read()
+            self.vid_array.append(frame)
+            self.ids.file_label.text = self.in_path + "\nFrame " + str(int(count / 3)) + "/" + str(frame_num)
+            vid = vid2
+            count += 3
         # color correction
         count = 0
         for img in self.vid_array:
@@ -351,15 +364,17 @@ class ProgressScreen(Screen):
         obj_class = []
         specscores = []
 
-        # set up for video export
-        frameSize = (1600, 1600)
-        # frameSize = (1280,720)
-        # make a saves folder in the detector folder
-        out = cv.VideoWriter('./saves/test.mp4', cv.VideoWriter_fourcc(*"mp4v"), 10, frameSize)
-
         n = self.frameTotal - 1
         self.ids.pb.max = n
-        import time
+
+        save_num = 1
+        save_path = "saves"
+        while save_path in os.listdir("./"):
+            save_path = "saves" + str(save_num)
+            save_num += 1
+        save_path = "./" + save_path
+        os.makedirs(save_path)
+
         start = time.time()
         for vid_img in self.vid_array:
             if frame_counter < self.frameTotal:  # ignore the last image, which is blank
@@ -408,8 +423,7 @@ class ProgressScreen(Screen):
                     x = 0
                     for item in spectracked:
                         # for x in tracked:
-
-                        if (len(specscores) < item.id):
+                        while len(specscores) < item.id:
                             specscores.append([])
                         if item.label == "Bottle":
                             bottles.add(item.id)
@@ -436,7 +450,7 @@ class ProgressScreen(Screen):
                         print(item.id)
                         print(item.last_detection.scores[0])
                         print(specscores)
-                        # specscores[(item.id)-1].append(item.last_detection.scores[0])
+                        specscores[(item.id)-1].append(item.last_detection.scores[0])
                         x += 1
                     print("bottles", bottles)
                     print("bottle caps", botcap)
@@ -452,11 +466,9 @@ class ProgressScreen(Screen):
                 frame = path.draw(vid_img, tracked)
                 # orimage=cv.line(orimage, (0,line), (2000, line), (255, 0, 0), 6)
                 frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
-                out.write(frame)
-                # print(r['scores'])
-                # visualize.display_instances(orimage, r['rois'], r['masks'], r['class_ids'], dataset.class_names, r['scores'])
                 # debugging tool
-                save_dir = ("./saves/" + str(frame_counter).rjust(5, '0') + ".png")
+                save_dir = (save_path + "/" + str(frame_counter).rjust(5, '0') + ".png")
+                print(save_dir,end=" ")
                 visualize.display_instances(orimage, save_dir, r['rois'], r['masks'], r['class_ids'],
                                             dataset.class_names, r['scores'])
                 #time metrics
@@ -479,12 +491,19 @@ class ProgressScreen(Screen):
                             + "\nAverage time per frame: " + str(avgTime) + " sec"
                 self.ids.count_label.text = count_str
                 frame_counter += 1
-        for file in os.listdir("./saves"):
-            frame = cv.imread("./saves/" + file)
-            out.write(frame)
 
+        # set up for video export
+        img = cv.imread(save_path + "/00001.png")
+        height, width = img.shape[:2]
+        frameSize = (width,height)
+        print("frame size",end=" ")
+        print(frameSize)
+        out = cv.VideoWriter(save_path + '/test.mp4', cv.VideoWriter_fourcc(*"mp4v"), 10, frameSize)
+        for file in os.listdir(save_path):
+            frame = cv.imread(save_path + "/" + file)
+            out.write(frame)
         out.release()
-        outfile = open("results.txt", "w")
+        outfile = open(save_path + "/results.txt", "w")
         outfile.write("Plastics Count Costia \n")
         outfile.write("\nbottles ")
         outfile.write(str(len(bottles)))
@@ -510,10 +529,13 @@ class ProgressScreen(Screen):
         outfile.write(str(len(totalitems)))
         outfile.write("\nTime elapsed: " + str(totalTime) +" sec")
         outfile.write("\nAverage time per frame: " + str(avgTime) +" sec")
-        for x in range(len(specscores)):
-            outfile.write("\nScore of item ")
-            outfile.write(str(x))
-            outfile.write(str(specscores[x]))
+        outfile.close()
+        with open(save_path + '/scores.txt', 'w') as sf:
+            for x in range(len(specscores)):
+                sf.write("\nScore of item ")
+                sf.write(str(x))
+                sf.write(str(specscores[x]))
+        self.manager.add_widget(ResultScreen(save_path, name='result'))
         self.manager.current = 'result'
 
 
@@ -524,10 +546,15 @@ class ResultScreen(Screen):
     # video download
     # text summary
     # text summary download
+    def __init__(self, txt_in, **kwargs):
+        super().__init__(**kwargs)
+        self.save_path = txt_in
+
     def get_scores(self):
-        with open("results.txt", "r") as rf:
+        with open(self.save_path + "/results.txt", "r") as rf:
             result_txt = rf.read()
         self.ids.scores.text = result_txt
+        self.ids.vid.source = self.save_path + '/test.mp4'
 
 
 class GUI_App(App):
@@ -535,7 +562,6 @@ class GUI_App(App):
         sm = ScreenManager()
         sm.add_widget(HomeScreen(name='home'))
         sm.add_widget(DetectScreen(name='detect'))
-        sm.add_widget(ResultScreen(name='result'))
         return sm
 
 
