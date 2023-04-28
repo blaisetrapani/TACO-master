@@ -146,7 +146,10 @@ Builder.load_string("""
                 on_release: root.model_choose("./models/logs/mask_rcnn_taco_0100.h5")
             Button:
                 text: 'TACO+'
-                on_release: root.model_choose("./models/logs/taco_10_0/mask_rcnn_taco_0074.h5")
+                on_release: root.model_choose("./models/logs/tacoplus/mask_rcnn_taco_plus_0100.h5")
+            Button:
+                text: 'Novel'
+                on_release: root.model_choose("./models/logs/tacoscratch/mask_rcnn_taco_scratch_0100.h5")
         Button:
             text: 'Choose file'
             on_release: root.choose_file()
@@ -505,6 +508,7 @@ class ProgressScreen(Screen):
         out.release()
         outfile = open(save_path + "/results.txt", "w")
         outfile.write("Plastics Count Costia \n")
+        outfile.write(self.model_path)
         outfile.write("\nbottles ")
         outfile.write(str(len(bottles)))
         outfile.write("\nbottle caps ")
